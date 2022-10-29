@@ -46,9 +46,9 @@ int SM1_Tick(int state1) {
     case SM1_INIT:
       state1 = SM1_S0;
       break; 
-    case: SM1_S0:
+    case SM1_S0:
       if(x !=0 || y != 0){
-        state = SM_S1;
+        state1 = SM1_S1;
         if(x<0){
              c = 2;
         }
@@ -63,12 +63,12 @@ int SM1_Tick(int state1) {
         }
       }
       else{
-        state = SM_S0;
+        state1 = SM1_S0;
       }
       break;
     case SM1_S1:
       if(x !=0 || y != 0){
-        state = SM_S1;
+        state1 = SM1_S1;
         if(x<0){
              c = 2;
         }
@@ -83,7 +83,7 @@ int SM1_Tick(int state1) {
         }
       }
       if(btn){
-        state = SM_S0;
+        state1 = SM1_S0;
       }
       break;
     default:
@@ -117,6 +117,7 @@ int SM2_Tick(int state2) {
   static unsigned int btn = digitalRead(JS_BTN);
   static int z = 0;
   static int k = 0;
+  static int ccw = 0;
   switch (state2) { // State transitions
     case SM2_INIT:
       //State Transition
@@ -142,7 +143,7 @@ int SM2_Tick(int state2) {
             j++;
         }
         if(j==8){
-            i = 0;
+            j = 0;
         }
         k = 0;
         state2 = SM2_Ccw;
@@ -171,7 +172,7 @@ int SM2_Tick(int state2) {
             j --;
         }
         if(j==0){
-            i = 8;
+            j = 8;
         }
         k = 0;
         state2 = SM2_Cw;
@@ -215,30 +216,29 @@ int SM2_Tick(int state2) {
       break;
     case SM2_Ccw:
       ccw = 1;
-      for (c; c < 4; c++) {
-        if (steps[j][c] == 1) {
-          digitalWrite(sig[c], HIGH);
+      for (t; t < 4; t++) {
+        if (steps[j][t] == 1) {
+          digitalWrite(sig[t], HIGH);
 
         }
         else {
-          digitalWrite(sig[c], LOW);
+          digitalWrite(sig[t], LOW);
 
         }
 
       }
       break;
-    case SM2_CW:
+    case SM2_Cw:
       ccw = 0;
-      for (c; c >0; c--) {
-        if (steps[j][c] == 1) {
-          digitalWrite(sig[c], HIGH);
+      for (t; t > 0; t--) {
+        if (steps[j][t] == 1) {
+          digitalWrite(sig[t], HIGH);
 
         }
         else {
-          digitalWrite(sig[c], LOW);
+          digitalWrite(sig[t], LOW);
 
         }
-
       }
       break;
     case SM2_iV:
@@ -248,7 +248,7 @@ int SM2_Tick(int state2) {
       z++;
     case SM2_OFF:
       for(int p = 0; p < 4; p++){
-        digitalWrite(sig[c], LOW);
+        digitalWrite(sig[p], LOW);
       }
 
 
