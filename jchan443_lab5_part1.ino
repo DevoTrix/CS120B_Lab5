@@ -37,29 +37,32 @@ task tasks[tasksNum];
 
 enum SM1_States { SM1_INIT, SM1_S0, SM1_S1};
 int SM1_Tick(int state1) {
-  static  int x = analogRead(JS_X);
-  static  int y = analogRead(JS_Y);
+  static int x = analogRead(JS_X);
+  static int y = analogRead(JS_Y);
   static unsigned int btn = digitalRead(JS_BTN);
-  static unsigned int c = 0;
+  static int c = 0;
   static unsigned int ccw = 1;
   switch (state1) { // State transitions
     case SM1_INIT:
       state1 = SM1_S0;
       break; 
     case SM1_S0:
-      if(x !=0 || y != 0){
+      if(x!= 517 || y!=517){
         state1 = SM1_S1;
-        if(x<0){
+        if(x<517){
              c = 2;
         }
-        else if(x>0){
+        else if(x>517){
             c = 5;
         }
-        if(y <0){
+        if(y <517){
             c = 4;
         }
-        else if(y>0){
+        else if(y>517){
             c = 3;
+        }
+        else if(!btn){
+            state1 = SM1_S0;
         }
       }
       else{
@@ -67,22 +70,22 @@ int SM1_Tick(int state1) {
       }
       break;
     case SM1_S1:
-      if(x !=0 || y != 0){
+      if(x!=517||y!=517){
         state1 = SM1_S1;
-        if(x<0){
+        if(x<517){
              c = 2;
         }
-        else if(x>0){
+        else if(x>517){
             c = 5;
         }
-        if(y <0){
+        if(y <517){
             c = 4;
         }
-        else if(y>0){
+        else if(y>517){
             c = 3;
         }
       }
-      if(btn){
+      if(!btn){
         state1 = SM1_S0;
       }
       break;
@@ -110,7 +113,7 @@ int SM1_Tick(int state1) {
   return state1;
 }
 
-enum SM2_States { SM2_INIT,SM2_S0, SM2_Ccw, SM2_Cw, SM2_rV, SM2_iV, SM2_OFF};
+enum SM2_States { SM2_INIT, SM2_Ccw, SM2_Cw, SM2_rV, SM2_iV, SM2_OFF};
 int SM2_Tick(int state2) {
   static int x = analogRead(JS_X);
   static int y = analogRead(JS_Y);
@@ -125,21 +128,21 @@ int SM2_Tick(int state2) {
       break;
     case SM2_Ccw:
       
-      if(x<0){
+      if(x<517){
         state2 = SM2_Cw;
       }
-      else if(y>0){
+      else if(y>517){
         state2 = SM2_iV;
       }
-      else if(y < 0){
+      else if(y < 517){
         state2 = SM2_rV;
       }
-      else if(btn){
+      else if(!btn){
         state2 = SM2_OFF;
       }
       else if(k >= z){
         if(t==4){
-            t==0;
+            t=0;
             j++;
         }
         if(j==8){
@@ -154,25 +157,25 @@ int SM2_Tick(int state2) {
       break;
     case SM2_Cw:
       ccw = 0;
-      if(x>0){
+      if(x>40){
         state2 = SM2_Ccw;
       }
-      else if(y>0){
+      else if(y>40){
         state2 = SM2_iV;
       }
-      else if(y < 0){
+      else if(y < 30){
         state2 = SM2_rV;
       }
-      else if(btn){
+      else if(!btn){
         state2 = SM2_OFF;
       }
       else if(k >= z){
         if(t==0){
             t= 4;
-            j --;
+            j--;
         }
-        if(j==0){
-            j = 8;
+        if(j==-1){
+            j = 7;
         }
         k = 0;
         state2 = SM2_Cw;
@@ -200,7 +203,7 @@ int SM2_Tick(int state2) {
       }
       break;
     case SM2_OFF:
-      if(!btn){
+      if(btn){
         if(ccw){
             state2 = SM2_Ccw;
         }
@@ -230,7 +233,7 @@ int SM2_Tick(int state2) {
       break;
     case SM2_Cw:
       ccw = 0;
-      for (t; t > 0; t--) {
+      for (t=0; t < 4; t++) {
         if (steps[j][t] == 1) {
           digitalWrite(sig[t], HIGH);
 
