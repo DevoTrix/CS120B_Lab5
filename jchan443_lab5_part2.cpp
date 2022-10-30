@@ -1,9 +1,7 @@
 int i = 0;
 int c = 0;
-int locked = 1;
-int correct = 0;
-int done = 1;
-int count = 0;
+int k = 0; //tracks the rotation
+int ok = 1;
 int IN1 = 10;
 int IN2 = 11;
 int IN3 = 12;
@@ -14,8 +12,10 @@ int LEFT = 2;
 int RIGHT = 5;
 int JS_X = A0;
 int JS_Y = A1;
+int wait = 1; //doesnt fuck with the shitty ass timing.
 int JS_BTN = 7;
-int pass[4] = {1, 1, 2, 3};
+int pass[4] = {1, 1, 2, 2};
+int inp[4] = {0,0,0,0};
 int sig[4] = {IN1, IN2, IN3, IN4};
 int steps[8][4] { //codes for the motor to turn properly
   {0, 0, 0, 1},
@@ -40,63 +40,117 @@ int delay_gcd;
 const unsigned short tasksNum = 2;
 task tasks[tasksNum];
 
-enum SM1_States { SM1_INIT, SM1_S0, SM1_Lock, SM1_Unlock};
+enum SM1_States { SM1_INIT, S0, Unlock, Unlocked, Locked, SetPass};
 int SM1_Tick(int state1) {
+   int x = analogRead(JS_X);
+   int y = analogRead(JS_Y);
+   int btn = digitalRead(JS_BTN);
   switch (state1) { // State transitions
     case SM1_INIT:
-      state1 = SM1_S0;
+      state1 = S0;
       break;
-    case SM1_S0:
-      if(correct){
-        correct = 0;
-        if(locked){
-            state1 = SM1_Unlock;
+    case S0:
+        ok = 1;
+        if(pass == inp){
+            state1 = Unlock;
         }
-        else{
-            state1 = SM1_Lock;
-        }
-      }
-      break;
-    case SM1_Lock:
+        state = S0;
+        break;
+    case Unlock:
       if(k == 256){
-        state1 = SM1_S0;
-        locked = 1;
         k = 0;
-        i = 7;
+        i = 0;
+        inp = {0, 0, 0, 0};
+        state1 = Unlocked;
+        break;
       }
       else{
         i++;
-        if(i==8){
+        if (i == 8) {
             k++;
-            i=0;
-        }
-        state1 = SM1_Lock;
-      }
-      break;
-    case SM1_Unlock:
-        if(k==256){
-            done = 1;
-            state1 = SM1_S0;
-            locked = 0;
-            k = 0;
             i = 0;
         }
-        else{
-            i--;
-            if(i == -1){
-                k++;
-                i = 7;
-            }
-            state1 = SM1_Unlock;
+      }
+      
+      state1 = Unlock;
+      break;
+    case Unlocked:
+        ok = 1;
+        if(!btn){
+            state1 = SetPass;
+            break;
         }
+        else{
+            if(pass == inp){
+                state1 = Lock;
+                break;
+            }
+        }
+    case SetPass:
+        if(x > 500 && x < 600 && y < 600 && y > 500){
+            wait = 1;
+        }
+        if(count > 3){
+            count = 0;
+            state1 = Unlocked;
+            break;
+        }
+        if(wait){
+            if(x < 500){ // checks if left
+                digitalWrite(RIGHT, HIGH);
+                pass[count] = 2;
+                count++;
+            }
+            else if(x > 600){ // checks if right
+                digitalWrite(LEFT, HIGH);
+                pass[count] = 1;
+                count++;
+            }
+            else if(y < 500){ // checks if down
+                digitalWrite(UP, HIGH);
+                pass[count] = 4;
+                count++;
+            }
+            else if(y > 600){ // checks if up
+                digitalWrite(DOWN, HIGH);
+                pass[count] = 3;
+                count++;
+            }
+            state1 = SetPass;
+        }
+        state1 = SetPass;
         break;
+    case Lock: 
+        ok = 0;
+        if(k == 256){
+        k = 0;
+        i = 7;
+        inp = {0, 0, 0, 0};
+        state1 = S0;
+        break;
+      }
+      else{
+        i--;
+        if (i == -1) {
+            k++;
+            i = 7;
+        }
+      }
+      
+      state1 = Lock;
+      break;
+
   }
   switch (state1) { // State Action
     case SM1_INIT:
       break;
-    case SM1_S0:
+    case S0:
+        for(int p = 2; p < 6; p++){
+            digitalWrite(p, LOW);
+        }
         break;
-    case SM1_Unlock:
+    case Unlock:
+      ok = 0;
       for (c; c < 4; c++) {
         if (steps[i][c] == 1) {
           digitalWrite(sig[c], HIGH);
@@ -109,8 +163,12 @@ int SM1_Tick(int state1) {
 
       }
       break;
-    case SM1_Unlock:
-      for (c; c < 4; c++) {
+    case Unlocked:
+        for(int p = 2; p < 6; p++){
+            digitalWrite(p, HIGH);
+        }
+    case Lock:
+        for (c; c < 4; c++) {
         if (steps[i][c] == 1) {
           digitalWrite(sig[c], HIGH);
 
@@ -122,152 +180,75 @@ int SM1_Tick(int state1) {
 
       }
       break;
+    case SetPass:
+        for(int p = 2; p < 6; p++){
+            digitalWrite(p, LOW);
+        }
+        break;
+
   }
 
   return state1;
 }
-// let Right = 1, Left = 2, Up = 3, Down = 4
-enum SM2_States { SM2_INIT, SM2_S0, SM2_S1, SM2_Incorrect, SM2_Correct, SM2_SetPass};
+
+enum SM2_States { SM2_INIT, T0, T1};
 int SM2_Tick(int state2) {
   switch (state2) { // State transitions
     case SM2_INIT:
       //State Transition
-      state2 = SM2_S0;
+      state2 = T0;
       break;
-    case SM2_S0:
-      if(!locked && digitalRead(JS_BTN)){
-        count = 0;
-        state2 = SM2_SetPass;
-      }
-      else{
-        count = 0;
-        state2 = SM2_S1;
-      }
-      break;
-    case SM2_S1:
-        if(x >600){
-            digitalWrite(RIGHT, HIGH);
-            if(pass[count] != 1){
-                count = 0;
-                state2 = SM2_Incorrect;
-                break;
-            }
-            else{
-                count++;
-                break;
-            }
+    case T0:
+        if(x > 500 && x < 600 && y < 600 && y > 500){
+            wait = 1;
         }
-        else if(x < 500){
-            digitalWrite(LEFT, HIGH);
-            if(pass[count] != 2){
-                count = 0;
-                state2 = SM2_Incorrect;
-                break;
-            }
-            else{
-                count++;
-                break;
-            }
-        }
-        else if(y < 500){
-            digitalWrite(DOWN, HIGH);
-            if(pass[count] != 4){
-                count = 0;
-                state2 = SM2_Incorrect;
-                break;
-            }
-            else{
-                count++;
-                break;
-            }
-        }
-        else if(y > 600){
-            digitalWrite(UP, HIGH);
-            if(pass[count] != 3){
-                count = 0;
-                state2 = SM2_Incorrect;
-                break;
-            }
-            else{
-                count++;
-                break;
-            }
-        }
-        else{
-            state2 = SM1_S1;
-        }
-    case SM2_Correct:
-        correct = 1;
-        state2 = SM2_S0;
-        break;
-    case Sm2_Incorrect:
-        if(count == 3){
+        if(count > 3){
             count = 0;
-            state2 = SM2_S0;
+            state2 = T1;
             break;
         }
-        else{
-            for(int p = 2; p < 6; p++){
-                digitalWrite(p, HIGH);
-            }
-            count++;
-        }
-        break;
-    case SM2_SetPass:
-        if(count < 4){
-            if(x >600){
-                digitalWrite(RIGHT,HIGH);
+        if(wait){
+            if(x < 500){ // checks if left
+                digitalWrite(RIGHT, HIGH);
+                inp[count] = 2;
                 count++;
-                pass[count] = 1;    
             }
-            else if(x < 500){
-                digitalWrite(LEFT,HIGH);
+            else if(x > 600){ // checks if right
+                digitalWrite(LEFT, HIGH);
+                inp[count] = 1;
                 count++;
-                pass[count] = 2;
             }
-            else if(y < 500){
-                digitalWrite(DOWN, LOW);
-                count++;
-                pass[count] = 4;
-            }
-            else if(y > 600){
+            else if(y < 500){ // checks if down
                 digitalWrite(UP, HIGH);
+                inp[count] = 4;
                 count++;
-                pass[count] = 3;
             }
+            else if(y > 600){ // checks if up
+                digitalWrite(DOWN, HIGH);
+                inp[count] = 3;
+                count++;
+            }
+            state2 = T0;
         }
-        state2 = SM2_S0;
+        state2 = T0;
         break;
-        
+    case T1:
+        if(ok == 1){
+            state2 = T0;
+        }
+        break;
+
   }
   switch (state2) { // State Action
     case SM2_INIT:
       break;
-    case SM2_S0:
-      if(locked){
-        for(int p = 2; p < 6; p++){
-            digitalWrite(p, LOW);
-        }
+    case T0:
+      for(int p = 02; p < 6; p++){
+        digitalWrite(p, LOW);
       }
       break;
-    case SM2_S1:
-        for(int p = 2; p < 6; p++){
-            digitalWrite(p, LOW);
-        }
+    case T1:
         break;
-    case SM2_Incorrect:
-        for(int p = 2; p < 6; p++){
-            digitalWrite(p,LOW);
-        }
-        break;
-    case SM2_Correct:
-        for(int p = 2; p < 6; p++){
-            digitalWrite(p, HIGH);
-        }
-        break;
-    case SM2_SetPass:
-        break;
-
   }
 
   return state2;
